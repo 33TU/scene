@@ -1145,9 +1145,8 @@ export class TextField extends DisplayObjectContainer {
 
 		value = (value == undefined) ? '' : value.toString();
 
-		if (value == this._htmlText)
-			return;
-
+		// The same HTML must be reapplied after text/formatting changes. The
+		// previous source string does not tell us what is currently displayed.
 		this._htmlText = value;
 		const processedText = HTMLTextProcessor.get().processHTML(this, value);
 
