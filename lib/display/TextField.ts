@@ -2799,7 +2799,9 @@ export class TextField extends DisplayObjectContainer {
 		const tr_words = this._textRuns_words;
 		const tr_len = tr_formats.length;
 
-		if (this._textShapesDirty) this._clearTextShapes();
+		// Every run below emits all its glyphs, including after layout-only changes.
+		// Discard the previous geometry even when the character codes are unchanged.
+		this._clearTextShapes();
 
 		for (let tr = 0; tr < tr_len; tr++) {
 			const run = tr_words[tr];
