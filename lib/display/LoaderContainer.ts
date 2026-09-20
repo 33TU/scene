@@ -68,6 +68,9 @@ import { DisplayObject } from './DisplayObject';
  * mask, as shown in the following code:</p>
  */
 export class LoaderContainer extends DisplayObjectContainer {
+	/** Adapters that attach their own display objects can disable parser-content attachment. */
+	public autoAddContent: boolean = true;
+
 	/**
 	 * Dispatched when any asset finishes parsing. Also see specific events for each
 	 * individual asset type (sprites, materials et c.)
@@ -642,7 +645,7 @@ export class LoaderContainer extends DisplayObjectContainer {
 	private _onLoaderComplete(event: LoaderEvent): void {
 		this._content = <DisplayObject> event.content;
 
-		if (this._content)
+		if (this._content && this.autoAddContent)
 			this.addChild(this._content);
 
 		this.dispatchEvent(event);

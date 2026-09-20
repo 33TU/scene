@@ -591,6 +591,9 @@ export class DisplayObject extends AssetBase implements IBitmapDrawable, IContai
 		}
 
 		this._filters = v;
+		// Filters change the extent of the cached image, not just its material.
+		// Recompute padding even when text and transforms remain unchanged.
+		this.invalidate();
 		this._invalidateStyle();
 	}
 

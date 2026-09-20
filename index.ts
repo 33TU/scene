@@ -1,11 +1,11 @@
 console.debug('AwayJS - Scene - 0.13.324');
 
-export { IDisplayObjectAdapter } from './lib/adapters/IDisplayObjectAdapter';
-export { IMovieClipAdapter } from './lib/adapters/IMovieClipAdapter';
-export { IFilter } from './lib/adapters/IFilter';
+export type { IDisplayObjectAdapter } from './lib/adapters/IDisplayObjectAdapter';
+export type { IMovieClipAdapter } from './lib/adapters/IMovieClipAdapter';
+export type { IFilter } from './lib/adapters/IFilter';
 
-export { IBitmapDrawable } from './lib/base/IBitmapDrawable';
-export { IFrameScript } from './lib/base/IFrameScript';
+export type { IBitmapDrawable } from './lib/base/IBitmapDrawable';
+export type { IFrameScript } from './lib/base/IFrameScript';
 export { MouseButtons } from './lib/base/MouseButtons';
 export { Timeline } from './lib/base/Timeline';
 export { TimelineActionType } from './lib/base/TimelineActionType';
@@ -43,7 +43,7 @@ export { TextfieldEvent } from './lib/events/TextfieldEvent';
 
 export { SkyboxElements, _Render_SkyboxElements, _Stage_SkyboxElements } from './lib/elements/SkyboxElements';
 
-export { ISceneGraphFactory } from './lib/factories/ISceneGraphFactory';
+export type { ISceneGraphFactory } from './lib/factories/ISceneGraphFactory';
 export { DefaultSceneGraphFactory } from './lib/factories/DefaultSceneGraphFactory';
 
 export { SceneImage2D } from './lib/image/SceneImage2D';
@@ -51,7 +51,7 @@ export { SceneImage2D } from './lib/image/SceneImage2D';
 export { FrameScriptManager } from './lib/managers/FrameScriptManager';
 export { DefaultFontManager } from './lib/managers/DefaultFontManager';
 export { DeviceFontManager } from './lib/managers/DeviceFontManager';
-export { IInputRecorder } from './lib/managers/IInputRecorder';
+export type { IInputRecorder } from './lib/managers/IInputRecorder';
 export { MouseManager } from './lib/managers/MouseManager';
 
 export { PrefabBase }	from './lib/prefabs/PrefabBase';
@@ -73,7 +73,7 @@ export { Font } from './lib/text/Font';
 export { FontLookUpMode } from './lib/text/FontLookUpMode';
 export { FontStyleName } from './lib/text/FontStyleName';
 export { GridFitType } from './lib/text/GridFitType';
-export { IFontTable } from './lib/text/IFontTable';
+export type { IFontTable } from './lib/text/IFontTable';
 export { HTMLTextProcessor } from './lib/text/HTMLTextProcessor';
 export { TesselatedFontTable } from './lib/text/TesselatedFontTable';
 export { TesselatedFontChar } from './lib/text/TesselatedFontChar';

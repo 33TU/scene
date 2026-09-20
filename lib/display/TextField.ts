@@ -317,6 +317,10 @@ export class TextField extends DisplayObjectContainer {
 	private lines_numSpacesPerline: number[] = [];
 	private char_positions_x: number[] = [];
 	private char_positions_y: number[] = [];
+	// Layout omits line-break glyphs; public text APIs use original UTF-16 indices.
+	private _charTextIndices: number[] = [];
+	private _paragraphTextOffsets: number[] = [];
+	private _lineTextOffsets: number[] = [];
 
 	// keeping track of the original textfield that was used for cloning this one.
 	public sourceTextField: TextField=null;
@@ -1053,7 +1057,21 @@ export class TextField extends DisplayObjectContainer {
 	 *
 	 * @default false
 	 */
-	public displayAsPassword: boolean;
+	private _displayAsPassword: boolean = false;
+
+	public get displayAsPassword(): boolean {
+		return this._displayAsPassword;
+	}
+
+	public set displayAsPassword(value: boolean) {
+		value = !!value;
+		if (this._displayAsPassword === value)
+			return;
+
+		this._displayAsPassword = value;
+		this._textDirty = true;
+		this.invalidate();
+	}
 
 	/**
 	 * Specifies whether to render by using embedded font outlines. If
@@ -2095,6 +2113,9 @@ export class TextField extends DisplayObjectContainer {
 	}
 
 	private _resetParagraph() {
+		this._charTextIndices.length = 0;
+		this._paragraphTextOffsets.length = 0;
+		this._lineTextOffsets.length = 0;
 		this._textShapesDirty = this._textShapesDirty || this.chars_codes.length > 0;
 
 		this.tf_per_char.length = 0;
@@ -2120,13 +2141,16 @@ export class TextField extends DisplayObjectContainer {
 		let formatIndex = 0;
 		let wordIndex = 0;
 		let charCodeIndex = 0;
+		this._charTextIndices.length = 0;
+		this._paragraphTextOffsets = [0];
 
 		// track char mutations between new and older.
 		let codeChanges = 0;
 		let linewidth = 0;
 		let c_start = 0;
 
-		const thisText = this._iText;
+		// Mask only the layout input. Editing and AS text getters retain the value.
+		const thisText = this._displayAsPassword ? '*'.repeat(this._iText.length) : this._iText;
 		const formatsCount = this._textFormatsIdx.length;
 		const paragraphIndices = this._paragraph_textRuns_indices;
 		const textRunFormats = this._textRuns_formats;
@@ -2224,6 +2248,7 @@ export class TextField extends DisplayObjectContainer {
 
 						// create a new textrun
 						pushFormat(tf, true);
+						this._paragraphTextOffsets.push(c + 1);
 
 						run = pushRunEntry({
 							start: this.words.length,
@@ -2258,6 +2283,7 @@ export class TextField extends DisplayObjectContainer {
 					linewidth += char_width;
 
 					pushCharData(char_code, tf, char_width);
+					this._charTextIndices.push(c);
 
 					// we create a new word if the char is either:
 					// 	- first char of paragraph
@@ -2347,6 +2373,9 @@ export class TextField extends DisplayObjectContainer {
 	}
 
 	private getWordPositions(tf: TextFormat) {
+		this.char_positions_x.length = 0;
+		this.char_positions_y.length = 0;
+		this._lineTextOffsets.length = 0;
 		/*console.log("this._iText", this._iText);
 		console.log("this._width", this._width);
 		console.log("this._height", this._height);*/
@@ -2427,6 +2456,7 @@ export class TextField extends DisplayObjectContainer {
 			let lineHeightCnt: number = 0;
 			this.lines_height[this.lines_height.length] = lines_heights[lineHeightCnt];
 			lines_formats[linecnt] = format;
+			this._lineTextOffsets[linecnt] = this._paragraphTextOffsets[p];
 
 			for (tr = this._paragraph_textRuns_indices[p]; tr < tr_len; tr++) {
 				format = this._textRuns_formats[tr];
@@ -2479,6 +2509,7 @@ export class TextField extends DisplayObjectContainer {
 							lines_formats[linecnt] = format;
 						} else {
 							linecnt++;
+							this._lineTextOffsets[linecnt] = this._charTextIndices[word.start];
 							this.lines_wordStartIndices[linecnt] = w;
 							this.lines_wordEndIndices[linecnt] = w + 1;
 							this.lines_width[linecnt] = word_width;
@@ -2784,7 +2815,9 @@ export class TextField extends DisplayObjectContainer {
 		const tr_words = this._textRuns_words;
 		const tr_len = tr_formats.length;
 
-		if (this._textShapesDirty) this._clearTextShapes();
+		// Every run below emits all its glyphs, including after layout-only changes.
+		// Discard the previous geometry even when the character codes are unchanged.
+		this._clearTextShapes();
 
 		for (let tr = 0; tr < tr_len; tr++) {
 			const run = tr_words[tr];
@@ -2989,16 +3022,15 @@ export class TextField extends DisplayObjectContainer {
 	 *         maximum values defining the bounding box of the character.
 	 */
 	public getCharBoundaries(charIndex: number): Rectangle {
+		this.reConstruct(false);
+		const index = this._charTextIndices.indexOf(charIndex);
+		if (index < 0 || !(this.chars_width[index] > 0))
+			return null;
 
-		const charBounds = new Rectangle();
-		if (charIndex >= this.char_positions_x.length) {
-			return charBounds;
-		}
-		charBounds.x = this.char_positions_x[charIndex];
-		charBounds.width = this.chars_width[charIndex];
-		charBounds.y = this.char_positions_y[charIndex];
-		charBounds.height = 10; // @todo
-		return charBounds;
+		const format = this.tf_per_char[index];
+		format.font_table.initFontSize(format.size);
+		return new Rectangle(this.char_positions_x[index], this.char_positions_y[index],
+			this.chars_width[index], format.font_table.getLineHeight());
 	}
 
 	/**
@@ -3106,15 +3138,14 @@ export class TextField extends DisplayObjectContainer {
 	 * @throws RangeError The character index specified is out of range.
 	 */
 	public getLineIndexOfChar(charIndex: number /*int*/): number /*int*/ {
-		this.buildParagraphs();
-
-		const len: number = this.lines_charIdx_start.length - 1;
-		for (let i: number;i < len; i++) {
-			if (charIndex >= this.lines_charIdx_start[i] && charIndex <= this.lines_charIdx_end[i + 1])
+		this.reConstruct(false);
+		if (charIndex < 0 || charIndex >= this._iText.length)
+			return -1;
+		for (let i = this._lineTextOffsets.length - 1; i >= 0; i--) {
+			if (charIndex >= this._lineTextOffsets[i])
 				return i;
 		}
-		// no line found. it must be the last
-		return len;
+		return -1;
 	}
 
 	/**
@@ -3173,12 +3204,13 @@ export class TextField extends DisplayObjectContainer {
 	 * @throws RangeError The line number specified is out of range.
 	 */
 	public getLineOffset(lineIndex: number /*int*/): number /*int*/ {
-		if (this.lines_charIdx_start.length == 0) {
+		this.reConstruct(false);
+		if (this._lineTextOffsets.length == 0) {
 			return 0;
 		}
-		if (lineIndex >= this.lines_charIdx_start.length)
-			return this.lines_charIdx_start[this.lines_charIdx_start.length - 1];
-		return this.lines_charIdx_start[lineIndex];
+		if (lineIndex >= this._lineTextOffsets.length)
+			return this._lineTextOffsets[this._lineTextOffsets.length - 1];
+		return this._lineTextOffsets[lineIndex];
 	}
 
 	/**
@@ -3821,6 +3853,7 @@ export class TextField extends DisplayObjectContainer {
 		super.copyTo(newInstance);
 		newInstance.autoSize = this.autoSize;
 		newInstance.type = this._type;
+		newInstance.displayAsPassword = this.displayAsPassword;
 		newInstance.html = this.html;
 		newInstance.width = this._width;
 		newInstance.height = this._height;
