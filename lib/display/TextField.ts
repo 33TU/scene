@@ -1053,7 +1053,21 @@ export class TextField extends DisplayObjectContainer {
 	 *
 	 * @default false
 	 */
-	public displayAsPassword: boolean;
+	private _displayAsPassword: boolean = false;
+
+	public get displayAsPassword(): boolean {
+		return this._displayAsPassword;
+	}
+
+	public set displayAsPassword(value: boolean) {
+		value = !!value;
+		if (this._displayAsPassword === value)
+			return;
+
+		this._displayAsPassword = value;
+		this._textDirty = true;
+		this.invalidate();
+	}
 
 	/**
 	 * Specifies whether to render by using embedded font outlines. If
@@ -2126,7 +2140,8 @@ export class TextField extends DisplayObjectContainer {
 		let linewidth = 0;
 		let c_start = 0;
 
-		const thisText = this._iText;
+		// Mask only the layout input. Editing and AS text getters retain the value.
+		const thisText = this._displayAsPassword ? '*'.repeat(this._iText.length) : this._iText;
 		const formatsCount = this._textFormatsIdx.length;
 		const paragraphIndices = this._paragraph_textRuns_indices;
 		const textRunFormats = this._textRuns_formats;
@@ -3821,6 +3836,7 @@ export class TextField extends DisplayObjectContainer {
 		super.copyTo(newInstance);
 		newInstance.autoSize = this.autoSize;
 		newInstance.type = this._type;
+		newInstance.displayAsPassword = this.displayAsPassword;
 		newInstance.html = this.html;
 		newInstance.width = this._width;
 		newInstance.height = this._height;
