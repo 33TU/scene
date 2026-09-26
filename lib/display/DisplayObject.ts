@@ -206,6 +206,11 @@ export class DisplayObject extends AssetBase implements IBitmapDrawable, IContai
 	protected _transform: Transform;
 	private _visible: boolean = true;
 	private _maskId: number = -1;
+	/**
+	 * Only containers (timelines, text fields, billboards) do work in
+	 * advanceFrame; the per-frame walk skips every other leaf.
+	 */
+	public _advancesFrame: boolean = false;
 
 	protected _timelineMasks: DisplayObject[] | undefined;
 	protected _mask: DisplayObject | undefined;

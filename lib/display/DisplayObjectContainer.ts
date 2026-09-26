@@ -93,11 +93,14 @@ export class DisplayObjectContainer extends DisplayObject implements IRenderCont
 	constructor() {
 		super();
 		this.tabChildren = false;
+		this._advancesFrame = true;
 	}
 
 	public advanceFrame(): void {
-		for (let i: number = 0; i < this._children.length; i++)
-			this._children[i].advanceFrame();
+		const children = this._children;
+		for (let i: number = 0; i < children.length; i++)
+			if (children[i]._advancesFrame)
+				children[i].advanceFrame();
 	}
 
 	/**

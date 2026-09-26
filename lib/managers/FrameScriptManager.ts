@@ -20,6 +20,32 @@ interface IScriptQueue {
 export class FrameScriptManager {
 
 	public static invalidAS3Constructors: boolean = false;
+	/**
+	 * Timeline-created instances whose AS3 constructor has not run yet. The
+	 * per-frame pass used to walk the entire scene to find them; in a busy
+	 * room new instances appear every frame, so that walk ran every frame.
+	 */
+	public static pendingAS3Constructors: DisplayObject[] = [];
+
+	public static addPendingAS3Constructor(mc: DisplayObject): void {
+		FrameScriptManager.invalidAS3Constructors = true;
+		FrameScriptManager.pendingAS3Constructors.push(mc);
+	}
+
+	private static treeOrder(mc: DisplayObject): number[] {
+		const key: number[] = [];
+		for (let node = mc; node.parent; node = node.parent)
+			key.unshift(node.parent.getChildIndex(node));
+		return key;
+	}
+
+	private static compareTreeOrder(a: number[], b: number[]): number {
+		const len = Math.min(a.length, b.length);
+		for (let i = 0; i < len; i++)
+			if (a[i] !== b[i])
+				return a[i] - b[i];
+		return a.length - b.length;
+	}
 
 	// FrameScript debugging:
 	// the first line of a FrameScript should be a comment that represents the functions unique name
@@ -159,8 +185,39 @@ export class FrameScriptManager {
 	public static execute_as3_constructors_enterFrame(mc: MovieClip): void {
 		if (!FrameScriptManager.invalidAS3Constructors)
 			return;
-		FrameScriptManager.execute_as3_constructors_recursiv(mc);
 		FrameScriptManager.invalidAS3Constructors = false;
+		/**
+		 * Same order as the old whole-scene walk (pre-order, parents first, so
+		 * a parent's super call still constructs its children), restricted to
+		 * the instances recorded since the last pass. Constructors can create
+		 * more instances; loop until nothing new is on stage.
+		 */
+		for (let pass = 0; pass < 16; pass++) {
+			const pending = FrameScriptManager.pendingAS3Constructors;
+			if (!pending.length)
+				return;
+			const onStage: { mc: DisplayObject, key: number[] }[] = [];
+			const later: DisplayObject[] = [];
+			for (let i = 0; i < pending.length; i++) {
+				const node = pending[i];
+				// A node without its own constructor may still hold classed
+				// children (a plain container clone); the recursion finds them.
+				if (FrameScriptManager.isOnStage(node))
+					onStage.push({ mc: node, key: FrameScriptManager.treeOrder(node) });
+				else if ((<IDisplayObjectAdapter>node.adapter)?.executeConstructor ||
+					(<any>node).numChildren > 0)
+					later.push(node);
+			}
+			// Instances never attached would otherwise accumulate.
+			if (later.length > 4096)
+				later.splice(0, later.length - 2048);
+			FrameScriptManager.pendingAS3Constructors = later;
+			if (!onStage.length)
+				return;
+			onStage.sort((a, b) => FrameScriptManager.compareTreeOrder(a.key, b.key));
+			for (let i = 0; i < onStage.length; i++)
+				FrameScriptManager.execute_as3_constructors_recursiv(<MovieClip>onStage[i].mc);
+		}
 	}
 
 	public static execute_as3_constructors_recursiv(mc: MovieClip): void {
