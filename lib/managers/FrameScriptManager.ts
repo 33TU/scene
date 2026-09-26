@@ -26,6 +26,7 @@ export class FrameScriptManager {
 	 * room new instances appear every frame, so that walk ran every frame.
 	 */
 	public static pendingAS3Constructors: DisplayObject[] = [];
+	private static _constructorPass: number = 0;
 
 	public static addPendingAS3Constructor(mc: DisplayObject): void {
 		FrameScriptManager.invalidAS3Constructors = true;
@@ -198,15 +199,28 @@ export class FrameScriptManager {
 				return;
 			const onStage: { mc: DisplayObject, key: number[] }[] = [];
 			const later: DisplayObject[] = [];
+			// Parked instances (created but not on stage) are re-tested only
+			// when their parent changed, or every eighth pass for the rare
+			// case of an ancestor being attached: walking every parked
+			// clone's parent chain each frame cost 3 percent of a frame.
+			const fullCheck = (FrameScriptManager._constructorPass++ & 7) === 0;
 			for (let i = 0; i < pending.length; i++) {
 				const node = pending[i];
+				const parked = (<any>node)._parkedParent;
+				if (parked !== undefined && !fullCheck && parked === node.parent) {
+					later.push(node);
+					continue;
+				}
 				// A node without its own constructor may still hold classed
 				// children (a plain container clone); the recursion finds them.
-				if (FrameScriptManager.isOnStage(node))
+				if (FrameScriptManager.isOnStage(node)) {
+					(<any>node)._parkedParent = undefined;
 					onStage.push({ mc: node, key: FrameScriptManager.treeOrder(node) });
-				else if ((<IDisplayObjectAdapter>node.adapter)?.executeConstructor ||
-					(<any>node).numChildren > 0)
+				} else if ((<IDisplayObjectAdapter>node.adapter)?.executeConstructor ||
+					(<any>node).numChildren > 0) {
+					(<any>node)._parkedParent = node.parent;
 					later.push(node);
+				}
 			}
 			// Instances never attached would otherwise accumulate.
 			if (later.length > 4096)
