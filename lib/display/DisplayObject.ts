@@ -211,6 +211,8 @@ export class DisplayObject extends AssetBase implements IBitmapDrawable, IContai
 	 * advanceFrame; the per-frame walk skips every other leaf.
 	 */
 	public _advancesFrame: boolean = false;
+	/** Timelines, text fields and billboards do their own work in advanceFrame. */
+	public _advancesSelf: boolean = false;
 
 	protected _timelineMasks: DisplayObject[] | undefined;
 	protected _mask: DisplayObject | undefined;

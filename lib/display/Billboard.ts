@@ -176,6 +176,7 @@ export class Billboard extends DisplayObjectContainer implements IPickable, IRen
 
 	constructor(material: IMaterial, _pixelSnapping: string = 'auto', smoothing: boolean = false) {
 		super();
+		this._advancesSelf = true;
 
 		this._onInvalidateTextureDelegate = (event: MaterialEvent) => this._onInvalidateTexture(event);
 

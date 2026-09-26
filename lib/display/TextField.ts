@@ -1857,6 +1857,7 @@ export class TextField extends DisplayObjectContainer {
 	 */
 	constructor() {
 		super();
+		this._advancesSelf = true;
 		this.onKeyDelegate = (event: any) => this.onKey(event);
 		this.startSelectionByMouseDelegate = (event: any) => this.startSelectionByMouse(event);
 		this.stopSelectionByMouseDelegate = (event: any) => this.stopSelectionByMouse(event);

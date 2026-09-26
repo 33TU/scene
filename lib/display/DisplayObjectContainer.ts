@@ -97,10 +97,14 @@ export class DisplayObjectContainer extends DisplayObject implements IRenderCont
 	}
 
 	public advanceFrame(): void {
+		// Shape art is a childless Sprite: nothing to advance below it.
 		const children = this._children;
-		for (let i: number = 0; i < children.length; i++)
-			if (children[i]._advancesFrame)
-				children[i].advanceFrame();
+		for (let i: number = 0; i < children.length; i++) {
+			const child = children[i];
+			if (child._advancesSelf || (child._advancesFrame &&
+				(<DisplayObjectContainer>child)._children.length))
+				child.advanceFrame();
+		}
 	}
 
 	/**

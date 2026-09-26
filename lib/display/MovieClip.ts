@@ -150,6 +150,7 @@ export class MovieClip extends Sprite {
 
 	constructor(timeline: Timeline, spriteMode = false) {
 		super();
+		this._advancesSelf = true;
 
 		this._soundVolume = 1;
 		this._isButton = false;
